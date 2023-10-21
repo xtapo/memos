@@ -23,6 +23,7 @@ import (
 	"github.com/usememos/memos/server/integration"
 	"github.com/usememos/memos/server/profile"
 	"github.com/usememos/memos/server/service/backup"
+	"github.com/usememos/memos/server/service/explorer"
 	"github.com/usememos/memos/server/service/metric"
 	"github.com/usememos/memos/store"
 )
@@ -41,6 +42,7 @@ type Server struct {
 	// Asynchronous runners.
 	backupRunner *backup.BackupRunner
 	telegramBot  *telegram.Bot
+	explorer     *explorer.Explorer
 }
 
 func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store) (*Server, error) {
@@ -57,6 +59,7 @@ func NewServer(ctx context.Context, profile *profile.Profile, store *store.Store
 		// Asynchronous runners.
 		backupRunner: backup.NewBackupRunner(store),
 		telegramBot:  telegram.NewBotWithHandler(integration.NewTelegramHandler(store)),
+		explorer:     explorer.NewExplorer(store),
 	}
 
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
@@ -121,6 +124,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	go s.telegramBot.Start(ctx)
 	go s.backupRunner.Run(ctx)
+	go s.explorer.Run(ctx)
 
 	// Start gRPC server.
 	listen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", s.Profile.Addr, s.Profile.Port+1))
